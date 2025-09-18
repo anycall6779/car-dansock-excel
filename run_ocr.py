@@ -115,3 +115,5 @@ if __name__ == "__main__":
         
         # 이미지가 하나라도 있었다면 이 함수가 실행됩니다.
         create_final_excel_report(all_results, output_excel_filename)
+
+        #rouzzang hai nanigasuki chocomint yorimo ananta
