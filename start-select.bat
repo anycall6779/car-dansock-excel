@@ -12,10 +12,19 @@ echo.
 echo ============================================================
 echo.
 
-REM 사용자에게 날짜 입력 요청
-set /p FOLDER_DATE="▶ 오늘 날짜를 입력하세요 (예: 25.09.18): "
+REM 시스템에서 오늘 날짜를 가져와 'yy.mm.dd' 형식으로 만듭니다.
+set TODAY_FORMATTED=%date:~2,2%.%date:~5,2%.%date:~8,2%
 
-REM 날짜 폴더 경로 생성 (사용자님의 hoho 경로에 맞게 수정)
+REM 오늘 날짜를 먼저 보여줍니다.
+echo 오늘은 %TODAY_FORMATTED% 입니다.
+
+REM 사용자에게 날짜 입력을 요청합니다.
+set /p FOLDER_DATE="날짜를 입력하세요 (그냥 엔터 시 오늘 날짜로 지정): "
+
+REM 만약 사용자가 아무것도 입력하지 않고 엔터를 눌렀다면, 오늘 날짜를 기본값으로 사용합니다.
+if not defined FOLDER_DATE set "FOLDER_DATE=%TODAY_FORMATTED%"
+
+REM 날짜 폴더 경로 생성
 set BASE_PATH="C:\Users\hoho\Desktop\test\image\%FOLDER_DATE%"
 
 REM 날짜 폴더가 실제로 있는지 확인
@@ -61,35 +70,25 @@ echo ------------------------------------------------------------
 echo.
 echo ▶ 스캔할 위치를 선택하세요. (번호 입력 후 엔터)
 echo.
-echo   [동]                  [기타]
-echo   1. 1동                16. 민원동
-echo   2. 2동                17. 2청사
-echo   3. 3동                18. 중앙동
-echo   4. 4동
-echo   5. 5동
-echo   6. 6동
-echo   7. 7동
-echo   8. 8동
-echo   9. 9동
-echo   10. 10동
-echo   11. 11동
-echo   12. 12동
-echo   13. 13동
-echo   14. 14동
-echo   15. 15동
+echo 1.1동 2.2동 3.3동 4.4동 5.5동 6.6동 7.7동 8.8동 9.9동 10.10동 11.11동 12.12동 13.13동 14.14동 15.15동 16.중앙동 17.민원동 18.2청사
 echo.
 echo ------------------------------------------------------------
 echo.
 echo [현재 선택된 위치: %SELECTED_NAMES%]
 echo.
 echo - 번호를 입력하여 위치를 추가/제거할 수 있습니다.
-echo - 선택을 완료하려면 's'를 입력하세요.
+echo - 선택을 완료하려면 '.'를 입력하세요.
 echo.
 
 set /p "CHOICE=▶ 입력: "
-if /i "%CHOICE%"=="s" goto selection_done
+REM =================================================================
+REM ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+REM 엔터 대신, '.'을 입력하면 선택 완료로 변경
+REM =================================================================
+if "%CHOICE%"=="." goto selection_done
 
-REM 사용자가 입력한 번호에 해당하는 폴더 이름을 변수에 할당 (이곳에 목록을 정의)
+REM 사용자가 입력한 번호에 해당하는 폴더 이름을 변수에 할당
+set "NAME="
 if "%CHOICE%"=="1" set "NAME=1동"
 if "%CHOICE%"=="2" set "NAME=2동"
 if "%CHOICE%"=="3" set "NAME=3동"
@@ -105,20 +104,29 @@ if "%CHOICE%"=="12" set "NAME=12동"
 if "%CHOICE%"=="13" set "NAME=13동"
 if "%CHOICE%"=="14" set "NAME=14동"
 if "%CHOICE%"=="15" set "NAME=15동"
-if "%CHOICE%"=="16" set "NAME=민원동"
-if "%CHOICE%"=="17" set "NAME=2청사"
-if "%CHOICE%"=="18" set "NAME=중앙동"
+if "%CHOICE%"=="16" set "NAME=중앙동"
+if "%CHOICE%"=="17" set "NAME=민원동"
+if "%CHOICE%"=="18" set "NAME=2청사"
 
-REM 중복 선택 확인 및 처리 (추가/제거)
-echo "%SELECTED_LIST%" | findstr /c:"%NAME%" > nul
-if errorlevel 1 (
-    REM 리스트에 없으면 추가
-    set "SELECTED_LIST=%SELECTED_LIST% %NAME%"
-    set "SELECTED_NAMES=%SELECTED_NAMES% %NAME%"
-) else (
-    REM 리스트에 있으면 제거
-    call set "SELECTED_LIST=%%SELECTED_LIST: %NAME%=%%"
-    call set "SELECTED_NAMES=%%SELECTED_NAMES: %NAME%=%%"
+REM NAME이 설정되었을 경우에만 아래 로직 실행
+if defined NAME (
+    REM 중복 선택 확인 및 처리 (버그 수정된 로직)
+    set "CHECK= %SELECTED_LIST% "
+    echo "%CHECK%" | findstr /c:" %NAME% " > nul
+
+    if errorlevel 1 (
+        REM 리스트에 없으면 추가
+        if not defined SELECTED_LIST (
+            set "SELECTED_LIST=%NAME%"
+        ) else (
+            set "SELECTED_LIST=%SELECTED_LIST% %NAME%"
+        )
+    ) else (
+        REM 리스트에 있으면 제거
+        call set "TEMP_LIST=%%CHECK: %NAME% = %%"
+        call set "SELECTED_LIST=%%TEMP_LIST:~1,-1%%"
+    )
+    set "SELECTED_NAMES=%SELECTED_LIST%"
 )
 
 goto select_loop
@@ -135,14 +143,17 @@ set "LOCATIONS_TO_SCAN=%SELECTED_LIST%"
 
 
 :run_python
-echo.
+cls
 echo ------------------------------------------------------------
 echo.
 echo ▶ 다음 위치에 대한 스캔을 시작합니다.
 echo    [%LOCATIONS_TO_SCAN%]
 echo.
+echo 잠시 후 프로그램이 시작됩니다...
+echo.
 pause
-"C:\Program Files\Python310\python.exe" "%~dp0run_ocr_select.py" %BASE_PATH% %LOCATIONS_TO_SCAN%
+
+"C:\Users\hoho\AppData\Local\Microsoft\WindowsApps\python.exe" "%~dp0run_ocr_select.py" %BASE_PATH% %LOCATIONS_TO_SCAN%
 
 
 echo.
